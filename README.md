@@ -21,6 +21,8 @@ sudo pip3 install -r requirements.txt
 python3 MalFinder.py malware.exe
 python3 MalFinder.py mal_library.dll
 ```
+![image](https://github.com/J0eBinary/MalFinder/assets/55762160/5857a51e-93e6-41da-aa5d-ba0ca4a80b8f)
+
 
 ### Contact 
 * X: [J0e_Binary](https://twitter.com/j0e_Binary)
