@@ -1,2 +1,5 @@
 pefile
+capstone
+re
+hashlib
 requests
