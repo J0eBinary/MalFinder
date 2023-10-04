@@ -1,16 +1,27 @@
 import pefile
 import sys
 import requests
+from Modules import sectionsInfo , formatting , DirectSyscall, printStrings, fileInfo, virustotal
+
 '''
-Author: J0eBinary
+Authors: J0eBinary, ohAz
 X: https://twitter.com/j0e_Binary
+X: https://twitter.com/AzizWho
 
+J0eBinary:
 This tool takes a PE file (e.g. *.exe) and checks if the Import Address Table (IAT) contains a suspicious function that is usually used in malware.
-
-
 The process is done by checking if the function name is present at https://malapi.io/ .
-
 If so, the tool returns the description of the function and what it is used for.
+
+ohAz:
+Added some features to it:
+*	Detect the use of Direct Syscalls by disassembling the binary and looking into it.
+*	Calculate each section's entropy to detect potential obfuscation/packing
+*	Calculate each section's virtual and raw size to detect the potential of packing.
+*	Extract all IPs from the binary.
+*	Display information about the binary.
+*	Calculate the MD5 hash and sends it to VirusTotal, then it prints out how many vendors have flagged this binary.
+
 
 '''
 
@@ -42,16 +53,24 @@ def peChecker(peFile):
 
 #print Banner
 def banner():
-	print(''''   _ _____     ______ _                        
-  (_)  _  |    | ___ (_)                       
-   _| |/' | ___| |_/ /_ _ __   __ _ _ __ _   _ 
-  | |  /| |/ _ \\ ___ \\ | '_ \\ / _` | '__| | | |
-  | \\ |_/ /  __/ |_/ / | | | | (_| | |  | |_| |
-  | |\\___/ \\___\\____/|_|_| |_|\\_\\_,_|_|   \\__, |
- _/ |                                     __/ |
-|__/                                     |___/ ''')
-	print("X: https://twitter.com/j0e_Binary")
-	print("=========================\n=========================")
+    print("\033[31m")
+    print('''
+       
+ ██████   ██████           ████  ███████████  ███                 █████                   
+░░██████ ██████           ░░███ ░░███░░░░░░█ ░░░                 ░░███                    
+ ░███░█████░███   ██████   ░███  ░███   █ ░  ████  ████████    ███████   ██████  ████████ 
+ ░███░░███ ░███  ░░░░░███  ░███  ░███████   ░░███ ░░███░░███  ███░░███  ███░░███░░███░░███
+ ░███ ░░░  ░███   ███████  ░███  ░███░░░█    ░███  ░███ ░███ ░███ ░███ ░███████  ░███ ░░░ 
+ ░███      ░███  ███░░███  ░███  ░███  ░     ░███  ░███ ░███ ░███ ░███ ░███░░░   ░███     
+ █████     █████░░████████ █████ █████       █████ ████ █████░░████████░░██████  █████    
+░░░░░     ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░       ░░░░░ ░░░░ ░░░░░  ░░░░░░░░  ░░░░░░  ░░░░░     
+       ''')
+    print("X: https://x.com/j0e_Binary")
+    print("X: https://x.com/AzizWho")
+    print("\033[00m")
+    print("=========================\n=========================")
+
+    
 
 #grab the function description by connecting to malapi.io
 def malAPI_checker(functionToBeChecked):
@@ -70,7 +89,7 @@ def malAPI_checker(functionToBeChecked):
 
 def printEnumerationFunctions(functions_imports):
 	if not functions_imports : return 
-	printGreen("Functions used for Enumeration:")
+	printGreen("\nFunctions used for Enumeration:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
@@ -78,14 +97,14 @@ def printEnumerationFunctions(functions_imports):
 
 def printInejectionFunctions(functions_imports):
 	if not functions_imports : return 
-	printGreen("Functions used for Injection:")
+	printGreen("\nFunctions used for Injection:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
 
 def printEvasionFunctions(functions_imports):
 	if not functions_imports : return 
-	printGreen("Functions used for Evasion:")
+	printGreen("\nFunctions used for Evasion:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
@@ -93,7 +112,7 @@ def printEvasionFunctions(functions_imports):
 def printSpyingFunctions(functions_imports):
 	
 	if not functions_imports : return 
-	printGreen("Functions used for Spying:")
+	printGreen("\nFunctions used for Spying:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
@@ -101,14 +120,14 @@ def printSpyingFunctions(functions_imports):
 def printInternetFunctions(functions_imports):
 	
 	if not functions_imports : return 
-	printGreen("Functions used for Internet Connection:")
+	printGreen("\nFunctions used for Internet Connection:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
 def printAnti_DebuggingFunctions(functions_imports):
 	
 	if not functions_imports : return 
-	printGreen("Functions used for Anti Debugging:")
+	printGreen("\nFunctions used for Anti Debugging:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
@@ -117,7 +136,7 @@ def printAnti_DebuggingFunctions(functions_imports):
 def printRansomwareFunctions(functions_imports):
 	
 	if not functions_imports : return 
-	printGreen("Functions used for Encryption/Ransomwares:")
+	printGreen("\nFunctions used for Encryption/Ransomwares:")
 	for i in functions_imports:
 		printRed(i)
 		malAPI_checker(i)
@@ -143,8 +162,10 @@ Ransomware = ["CryptAcquireContextA","EncryptFileA","CryptEncrypt","CryptDecrypt
 usage()
 peChecker(sys.argv[1])
 banner()
-
+pathToBinary = sys.argv[1]
 file = pefile.PE(sys.argv[1])
+
+
 for item in file.DIRECTORY_ENTRY_IMPORT:
 	
 	for imports_from_dll in item.imports:
@@ -152,6 +173,7 @@ for item in file.DIRECTORY_ENTRY_IMPORT:
 		decodedFunctionName = (imports_from_dll.name.decode('utf-8'))
 		if (decodedFunctionName in Enumeration):
 	 		EnumerationImports.append(decodedFunctionName)
+
 		if (decodedFunctionName in Injection):
 			InjectionImports.append(decodedFunctionName)
 
@@ -174,6 +196,14 @@ for item in file.DIRECTORY_ENTRY_IMPORT:
 		if (decodedFunctionName in Ransomware):
 			RansomwareImports.append(decodedFunctionName)
 
+
+
+
+fileInfo.print_pe_info(pathToBinary)
+sectionsInfo.print_sections_info(file)
+printStrings.print_strings_in_binary(pathToBinary)
+DirectSyscall.find_Directsyscalls(pathToBinary)
+virustotal.parseScan(pathToBinary)
 printEnumerationFunctions(EnumerationImports)
 printInejectionFunctions(InjectionImports)
 printEvasionFunctions(EvasionImports)
@@ -181,3 +211,5 @@ printSpyingFunctions(SpyingImports)
 printInternetFunctions(InternetImports)
 printAnti_DebuggingFunctions(Anti_DebuggingImports)
 printRansomwareFunctions(RansomwareImports)
+    
+    
