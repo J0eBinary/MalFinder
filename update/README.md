@@ -1,1 +1,0 @@
-## All the details of API functions will scraping from : https://malapi.io/ .
