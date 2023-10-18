@@ -55,4 +55,4 @@ these new features are add by [oh-az](https://github.com/oh-az)
 * X: [ohAz](https://twitter.com/AzizWho)
 
 ## Version
-**Current version is 1.0**
+**Current version is 1.2**
